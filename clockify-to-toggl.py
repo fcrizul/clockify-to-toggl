@@ -5,17 +5,21 @@ from toggl.TogglPy import Endpoints
 
 API_TOKEN = ''
 
-def createTimeEntry(toggl, duration, description=None, projectid=None, projectname=None,
-                        taskid=None, clientname=None, year=None, month=None, day=None, hour=None, minute=None, hourdiff=-2):
+def createTimeEntry(toggl, duration, description=None,
+                    projectid=None, projectname=None, taskid=None, clientname=None, 
+                    year=None, month=None, day=None, hour=None, minute=None, 
+                    hourdiff=-2):
         data = {
             "time_entry": {}
         }
         billable=False
         if not projectid:
             if projectname and clientname:
-                projectid = (toggl.getClientProject(clientname, projectname))['data']['id']
+                project = (toggl.getClientProject(clientname, projectname))['data']
+                projectid = project['id']
+                billable = project['billable']
             elif projectname:
-                project = (toggl.searchClientProject(projectname))
+                project = toggl.searchClientProject(projectname)
                 projectid = project['id']
                 billable = project['billable']
             else:
@@ -47,7 +51,7 @@ def main():
     toggl = Toggl()
     toggl.setAPIKey(API_TOKEN) 
 
-    with open('ClockifyCSV.csv', mode='r') as csv_file:
+    with open('Clockify.csv', mode='r') as csv_file:
         csv_reader = csv.DictReader(csv_file)
         line_count = 0
         for row in csv_reader:
@@ -57,8 +61,8 @@ def main():
             startDate = row["Start Date"].split("-")
             startTime = row["Start Time"].split(":")
             durationArray = row["Duration (h)"].split(":")
-            duration = int(durationArray[0])*3600 + int(durationArray[1])*  3600 // 60 + int(durationArray[2]) % 60
-            createTimeEntry(toggl=toggl,description=row["Description"],  duration=duration, projectname=row["Project"], year=int(startDate[0]), month=int(startDate[1]), day=int(startDate[2]), hour=int(startTime[0]), minute=int(startTime[1]), hourdiff=3)
+            duration = (int(durationArray[0]) * 3600) + (int(durationArray[1]) * 3600 // 60) + (int(durationArray[2]) % 60)
+            print(createTimeEntry(toggl=toggl,description=row["Description"],  duration=duration, projectname=row["Project"], year=int(startDate[0]), month=int(startDate[1]), day=int(startDate[2]), hour=int(startTime[0]), minute=int(startTime[1]), hourdiff=3))
             print(f'\t{row["Project"]} - {row["Description"]} - {row["Start Date"]} - {row["Start Time"]}.')
             line_count += 1
         print(f'Processed {line_count} lines.')
