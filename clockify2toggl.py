@@ -1,14 +1,14 @@
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 from toggl.TogglPy import Toggl
 from toggl.TogglPy import Endpoints
-
-API_TOKEN = ''
+import sys
+import time
 
 def createTimeEntry(toggl, duration, description=None,
                     projectid=None, projectname=None, taskid=None, clientname=None, 
                     year=None, month=None, day=None, hour=None, minute=None, 
-                    hourdiff=-2):
+                    hourdiff=-3):
         data = {
             "time_entry": {}
         }
@@ -18,14 +18,16 @@ def createTimeEntry(toggl, duration, description=None,
                 project = (toggl.getClientProject(clientname, projectname))['data']
                 projectid = project['id']
                 billable = project['billable']
-            elif projectname:
+            elif projectname:                
                 project = toggl.searchClientProject(projectname)
-                projectid = project['id']
-                billable = project['billable']
+                if project is not None:   
+                    projectid = project['id']
+                    billable = project['billable']
             else:
                 print('Too many missing parameters for query')
                 exit(1)
 
+        time.sleep(1) # safe window
         if description:
             data['time_entry']['description'] = description
 
@@ -37,7 +39,10 @@ def createTimeEntry(toggl, duration, description=None,
         day = datetime.now().day if not day else day
         hour = datetime.now().hour if not hour else hour
 
-        timestruct = datetime(year, month, day, hour + hourdiff, minute).isoformat() + '.000Z'
+        date = datetime(year, month, day, hour, minute)
+
+
+        timestruct = (date + timedelta(hours=hourdiff)).isoformat() + '.000Z'
         data['time_entry']['start'] = timestruct
         data['time_entry']['duration'] = duration
         data['time_entry']['pid'] = projectid
@@ -45,13 +50,18 @@ def createTimeEntry(toggl, duration, description=None,
         data['time_entry']['billable'] = billable
 
         response = toggl.postRequest(Endpoints.TIME_ENTRIES, parameters=data)
+        time.sleep(1) # safe window
         return toggl.decodeJSON(response)
 
 def main():
+    if len(sys.argv) < 2:
+        print("You must set argument!!!")
+        sys.exit()
     toggl = Toggl()
-    toggl.setAPIKey(API_TOKEN) 
+    
+    toggl.setAPIKey(sys.argv[1]) 
 
-    with open('Clockify.csv', mode='r') as csv_file:
+    with open(sys.argv[2], mode='r') as csv_file:
         csv_reader = csv.DictReader(csv_file)
         line_count = 0
         for row in csv_reader:
